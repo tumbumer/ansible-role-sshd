@@ -1,0 +1,22 @@
+galaxy_info:
+  author: Denis Dvoretskov aka tumbumer <denis@tumbum.com>
+  description: Manage openssh-server configuration
+  license: Apache-2.0
+  min_ansible_version: 2.0
+  github_branch: master
+  platforms:
+  - name: Ubuntu
+    versions:
+    - xenial
+  - name: Debian
+    versions:
+    - jessie
+  galaxy_tags:
+  - debian
+  - ubuntu
+  - system
+  - ssh
+  - ssh-server
+  - openssh
+  - openssh-server
+dependencies: []

@@ -1,0 +1,81 @@
+---
+- name: "tumbumer.sshd: check os version"
+  fail:
+    msg: "OS must be Debian Jessie or Ubuntu 16.04 Xenial Xerus"
+  when: (not (ansible_distribution == "Debian" and ansible_distribution_release == "jessie")) and (not (ansible_distribution == "Ubuntu" and ansible_distribution_release == "xenial"))
+
+- name: "tumbumer.sshd: check that openssh-server is installed"
+  command: "dpkg-query -s openssh-server"
+  register: tumbumer_sshd_check
+  failed_when: tumbumer_sshd_check.rc != 0
+  changed_when: false
+
+- name: "tumbumer.sshd: update /etc/ssh/sshd_config"
+  become: yes
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+  notify:
+    - tumbumer-sshd-restart
+
+- name: "tumbumer.sshd: delete remote host keyfiles"
+  become: yes
+  shell: /bin/rm -f /etc/ssh/ssh_host_*
+  args:
+    warn: false
+  when: ((tumbumer_sshd_host_key_action | default ()) == "create") or ((tumbumer_sshd_host_key_action | default ()) == "update")
+  notify:
+    - tumbumer-sshd-restart
+
+# Create remote host keyfiles block
+
+- block:
+
+  - name: "tumbumer.sshd: create remote host keyfiles"
+    become: yes
+    shell: /usr/bin/ssh-keygen -t rsa -b 8192 -f /etc/ssh/ssh_host_rsa_key -C {{ ansible_fqdn }} -N ""
+    notify:
+      - tumbumer-sshd-restart
+
+  - name: "tumbumer.sshd: fetch remote host private keyfile"
+    become: yes
+    fetch:
+      src: /etc/ssh/ssh_host_rsa_key
+      dest: "{{ tumbumer_sshd_host_files_path }}"
+      fail_on_missing: yes
+
+  - name: "tumbumer.sshd: fetch remote host public keyfile"
+    fetch:
+      src: /etc/ssh/ssh_host_rsa_key.pub
+      dest: "{{ tumbumer_sshd_host_files_path }}"
+      fail_on_missing: yes
+
+  when: (tumbumer_sshd_host_key_action | default ()) == "create"
+
+# Update remote host keyfiles block
+
+- block:
+
+  - name: "tumbumer.sshd: push remote host private keyfile"
+    become: yes
+    copy:
+      src: "{{ tumbumer_sshd_host_files_path }}//{{ inventory_hostname }}/etc/ssh/ssh_host_rsa_key"
+      dest: /etc/ssh/ssh_host_rsa_key
+      owner: root
+      group: root
+      mode: 0600
+    notify:
+      - tumbumer-sshd-restart
+
+  - name: "tumbumer.sshd: push remote host public keyfile"
+    become: yes
+    copy:
+      src: "{{ tumbumer_sshd_host_files_path }}/{{ inventory_hostname }}/etc/ssh/ssh_host_rsa_key.pub"
+      dest: /etc/ssh/ssh_host_rsa_key.pub
+      owner: root
+      group: root
+      mode: 0644
+    notify:
+      - tumbumer-sshd-restart
+
+  when: (tumbumer_sshd_host_key_action | default ()) == "update"
