@@ -1,5 +1,6 @@
 ---
-- name: "tumbumer.sshd: check os version"
+
+- name: "tumbumer.sshd: fail if the os version does not match"
   fail:
     msg: "OS must be Ubuntu 18.04 Bionic Beaver"
   when: not (ansible_distribution == "Ubuntu" and ansible_distribution_release == "bionic")
@@ -15,6 +16,7 @@
   template:
     src: sshd_config.j2
     dest: /etc/ssh/sshd_config
+  when: tumbumer_sshd_update_config == true
   notify:
     - tumbumer-sshd-restart
 
@@ -23,59 +25,48 @@
   shell: /bin/rm -f /etc/ssh/ssh_host_*
   args:
     warn: false
-  when: ((tumbumer_sshd_host_key_action | default ()) == "create") or ((tumbumer_sshd_host_key_action | default ()) == "update")
+  when: (tumbumer_sshd_host_key_action == "create" or tumbumer_sshd_host_key_action == "update")
   notify:
     - tumbumer-sshd-restart
 
-# Create remote host keyfiles block
+- name: "tumbumer.sshd: create remote host keyfiles"
+  become: yes
+  openssh_keypair:
+    path: /etc/ssh/ssh_host_ed25519_key
+    type: ed25519
+    comment: "{{ ansible_fqdn }}"
+  when: tumbumer_sshd_host_key_action == "create"
+  notify:
+    - tumbumer-sshd-restart
 
-- block:
+- name: "tumbumer.sshd: get ssh host keys from vault"
+  local_action:
+    module: set_fact
+    tumbumer_sshd_private_key: "{{ lookup('hashi_vault', 'auth_method=approle url={{ tumbumer_sshd_vault_url }} role_id={{ tumbumer_sshd_vault_role_id }} secret_id={{ tumbumer_sshd_vault_secret_id }} secret={{ tumbumer_sshd_vault_private_key }}') }}"
+    tumbumer_sshd_public_key: "{{ lookup('hashi_vault', 'auth_method=approle url={{ tumbumer_sshd_vault_url }} role_id={{ tumbumer_sshd_vault_role_id }} secret_id={{ tumbumer_sshd_vault_secret_id }} secret={{ tumbumer_sshd_vault_public_key }}') }}"
+  register: tumbumer_sshd_keys
+  when: tumbumer_sshd_host_key_action == "update"
 
-  - name: "tumbumer.sshd: create remote host keyfiles"
-    become: yes
-    shell: /usr/bin/ssh-keygen -t rsa -b 8192 -f /etc/ssh/ssh_host_rsa_key -C {{ ansible_fqdn }} -N ""
-    notify:
-      - tumbumer-sshd-restart
+- name: "tumbumer.sshd: push remote host private keyfile"
+  become: yes
+  copy:
+    content: "{{ tumbumer_sshd_private_key }}"
+    dest: /etc/ssh/ssh_host_ecdsa_key
+    owner: root
+    group: root
+    mode: 0600
+  when: tumbumer_sshd_host_key_action == "update"
+  notify:
+    - tumbumer-sshd-restart
 
-  - name: "tumbumer.sshd: fetch remote host private keyfile"
-    become: yes
-    fetch:
-      src: /etc/ssh/ssh_host_rsa_key
-      dest: "{{ tumbumer_sshd_host_files_path }}"
-      fail_on_missing: yes
-
-  - name: "tumbumer.sshd: fetch remote host public keyfile"
-    fetch:
-      src: /etc/ssh/ssh_host_rsa_key.pub
-      dest: "{{ tumbumer_sshd_host_files_path }}"
-      fail_on_missing: yes
-
-  when: (tumbumer_sshd_host_key_action | default ()) == "create"
-
-# Update remote host keyfiles block
-
-- block:
-
-  - name: "tumbumer.sshd: push remote host private keyfile"
-    become: yes
-    copy:
-      src: "{{ tumbumer_sshd_host_files_path }}//{{ inventory_hostname }}/etc/ssh/ssh_host_rsa_key"
-      dest: /etc/ssh/ssh_host_rsa_key
-      owner: root
-      group: root
-      mode: 0600
-    notify:
-      - tumbumer-sshd-restart
-
-  - name: "tumbumer.sshd: push remote host public keyfile"
-    become: yes
-    copy:
-      src: "{{ tumbumer_sshd_host_files_path }}/{{ inventory_hostname }}/etc/ssh/ssh_host_rsa_key.pub"
-      dest: /etc/ssh/ssh_host_rsa_key.pub
-      owner: root
-      group: root
-      mode: 0644
-    notify:
-      - tumbumer-sshd-restart
-
-  when: (tumbumer_sshd_host_key_action | default ()) == "update"
+- name: "tumbumer.sshd: push remote host public keyfile"
+  become: yes
+  copy:
+    content: "{{ tumbumer_sshd_public_key }}"
+    dest: /etc/ssh/ssh_host_ecdsa_key.pub
+    owner: root
+    group: root
+    mode: 0644
+  when: tumbumer_sshd_host_key_action == "update"
+  notify:
+    - tumbumer-sshd-restart

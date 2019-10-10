@@ -1,34 +1,29 @@
-Protocol 2
 AddressFamily inet
-ListenAddress {{ tumbumer_sshd_address | default(ansible_default_ipv4.address) }}:{{ tumbumer_sshd_port | default(22) }}
+{% if tumbumer_sshd_address is defined %}
+ListenAddress {{ tumbumer_sshd_address }}
+{% endif %}
+Port {{ tumbumer_sshd_port }}
+Protocol 2
 
 LoginGraceTime 5
 MaxStartups 3
 
-SyslogFacility AUTH
-LogLevel INFO
-
-HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
 AuthorizedKeysFile %h/.ssh/authorized_keys
 
-PermitRootLogin without-password
-PubkeyAuthentication yes
-PasswordAuthentication no
-UsePrivilegeSeparation yes
-StrictModes yes
-IgnoreRhosts yes
-HostbasedAuthentication no
-IgnoreUserKnownHosts yes
+AuthenticationMethods publickey
 ChallengeResponseAuthentication no
+Compression no
+PasswordAuthentication no
+PermitRootLogin without-password
 UsePAM yes
+UsePrivilegeSeparation sandbox
 
 Ciphers aes256-gcm@openssh.com
 KexAlgorithms curve25519-sha256@libssh.org
 MACs hmac-sha2-512-etm@openssh.com
 
-X11Forwarding no
-X11DisplayOffset 10
+LogLevel VERBOSE
 PrintMotd no
-PrintLastLog yes
-TCPKeepAlive yes
-Subsystem sftp /usr/lib/openssh/sftp-server
+Subsystem sftp /usr/lib/ssh/sftp-server -f AUTHPRIV -l INFO
+SyslogFacility AUTH
