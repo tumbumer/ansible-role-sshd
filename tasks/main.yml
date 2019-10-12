@@ -51,7 +51,7 @@
   become: yes
   copy:
     content: "{{ tumbumer_sshd_private_key }}"
-    dest: /etc/ssh/ssh_host_ecdsa_key
+    dest: /etc/ssh/ssh_host_ed25519_key
     owner: root
     group: root
     mode: 0600
@@ -63,7 +63,7 @@
   become: yes
   copy:
     content: "{{ tumbumer_sshd_public_key }}"
-    dest: /etc/ssh/ssh_host_ecdsa_key.pub
+    dest: /etc/ssh/ssh_host_ed25519_key.pub
     owner: root
     group: root
     mode: 0644
