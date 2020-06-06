@@ -1,9 +1,8 @@
 ---
-
-- name: "tumbumer.sshd: fail if the os version does not match"
+- name: "tumbumer.sshd: check os version"
   fail:
-    msg: "OS must be Ubuntu 18.04 Bionic Beaver"
-  when: not (ansible_distribution == "Ubuntu" and ansible_distribution_release == "bionic")
+    msg: "OS must be Ubuntu 20.04 Focal Fossa"
+  when: not (ansible_distribution == "Ubuntu" and ansible_distribution_release == "focal")
 
 - name: "tumbumer.sshd: check that openssh-server is installed"
   command: "dpkg-query -s openssh-server"
@@ -16,7 +15,7 @@
   template:
     src: sshd_config.j2
     dest: /etc/ssh/sshd_config
-  when: tumbumer_sshd_update_config == true
+  when: tumbumer_sshd_update_config
   notify:
     - tumbumer-sshd-restart
 
@@ -38,14 +37,6 @@
   when: tumbumer_sshd_host_key_action == "create"
   notify:
     - tumbumer-sshd-restart
-
-- name: "tumbumer.sshd: get ssh host keys from vault"
-  local_action:
-    module: set_fact
-    tumbumer_sshd_private_key: "{{ lookup('hashi_vault', 'auth_method=approle url={{ tumbumer_sshd_vault_url }} role_id={{ tumbumer_sshd_vault_role_id }} secret_id={{ tumbumer_sshd_vault_secret_id }} secret={{ tumbumer_sshd_vault_private_key }}') }}"
-    tumbumer_sshd_public_key: "{{ lookup('hashi_vault', 'auth_method=approle url={{ tumbumer_sshd_vault_url }} role_id={{ tumbumer_sshd_vault_role_id }} secret_id={{ tumbumer_sshd_vault_secret_id }} secret={{ tumbumer_sshd_vault_public_key }}') }}"
-  register: tumbumer_sshd_keys
-  when: tumbumer_sshd_host_key_action == "update"
 
 - name: "tumbumer.sshd: push remote host private keyfile"
   become: yes

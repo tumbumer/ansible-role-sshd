@@ -2,5 +2,3 @@
 tumbumer_sshd_update_config: false
 tumbumer_sshd_host_key_action:
 tumbumer_sshd_port: 22
-tumbumer_sshd_vault_url: http://localhost:8200
-tumbumer_sshd_vault_secret_id:
