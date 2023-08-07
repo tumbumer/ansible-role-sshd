@@ -14,11 +14,20 @@
   notify:
     - tumbumer-sshd-restart
 
+- name: "tumbumer.sshd: find remote host keyfiles"
+  become: yes
+  find:
+    paths: /etc/ssh/
+    patterns: ssh_host_*
+  register: tumbumer_sshd_ssh_host_files
+  when: (tumbumer_sshd_host_key_action == "create" or tumbumer_sshd_host_key_action == "update")
+
 - name: "tumbumer.sshd: delete remote host keyfiles"
   become: yes
-  shell: /bin/rm -f /etc/ssh/ssh_host_*
-  args:
-    warn: false
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ tumbumer_sshd_ssh_host_files.files }}"
   when: (tumbumer_sshd_host_key_action == "create" or tumbumer_sshd_host_key_action == "update")
   notify:
     - tumbumer-sshd-restart

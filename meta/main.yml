@@ -1,16 +1,17 @@
 galaxy_info:
+  role_name: sshd
   author: Denis Dvoretskov aka tumbumer <denis@tumbum.com>
   description: Manage openssh-server configuration
   license: Apache-2.0
-  min_ansible_version: 2.0
+  min_ansible_version: "2.0"
   github_branch: master
   platforms:
-  - name: Ubuntu
-    versions:
-    - focal
+    - name: Ubuntu
+      versions:
+        - jammy
   galaxy_tags:
-  - ubuntu
-  - system
-  - ssh
-  - openssh
-dependencies: []
+    - ubuntu
+    - system
+    - ssh
+    - openssh
+dependencies: [ ]
